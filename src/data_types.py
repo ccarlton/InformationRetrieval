@@ -380,7 +380,7 @@ class XMLData(Data):
         self.document = Document(file_in.read())
         file_in.close()
 
-    def parse(self):
+    def parse_file(self):
         self.xml = xml.dom.minidom.parseString(self.document.text)
 
 class IRData(XMLData):
@@ -389,38 +389,36 @@ class IRData(XMLData):
         self.stopwords = ['i', 'you', 'they', 'them', 'his', 'do', 'be', 'am',
                             'are', 'have', 'had', 'in', 'onto', 'and', 'or', 'of',
                             'from', 'a']
-        self.parse()
+        self.ir_docs = []
+        self.parse_file()
+
+    def parse_docs(self):
+        return None
+
+    def remove_stop_words(self):
+        for doc in self.ir_docs:
+            doc.word_tokenize();
+            for word in doc.words:
+                print word.lower()
+                if word.lower() in self.stopwords:
+                    doc.words.remove(word)
       
-    def remove_stop_words(self, stopwords):
-        return 0;
 
 class JokerData(IRData):
     def __init__(self, filename):
         super(JokerData, self).__init__(filename)		  
-        self.parse_jokes()
+        self.parse_docs()
          
-    def get_jokes(self):
-        return self.jokes
-
-    def parse_jokes(self):
+    def parse_docs(self):
         tjokes = []
 
         for joke in self.xml.getElementsByTagName('joke'):
             ntxt = TXTData("no.fn")
             ntxt.set_text(joke.toxml().replace('<joke>','').replace('</joke',''))
             tjokes.append(ntxt)
-        self.jokes = tjokes
+        self.ir_docs = tjokes
         self.remove_stop_words() 
 
-    def remove_stop_words(self):
-        for joke in self.jokes:
-            joke.word_tokenize();
-            for word in joke.words:
-                print word.lower()
-                if word.lower() in self.stopwords:
-                    joke.words.remove(word)
-    
- 
 class Document:
     def __init__(self, text):
         self.text = text
