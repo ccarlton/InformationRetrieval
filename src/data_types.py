@@ -1,3 +1,4 @@
+import hashlib
 import sys
 import os.path
 import csv
@@ -388,8 +389,9 @@ class IRData(XMLData):
         super(IRData, self).__init__(filename)		  
         self.stopwords = ['i', 'you', 'they', 'them', 'his', 'do', 'be', 'am',
                             'are', 'have', 'had', 'in', 'onto', 'and', 'or', 'of',
-                            'from', 'a']
+                            'from', 'a', '&quot']
         self.ir_docs = []
+        self.ir_md5 = []
         self.parse_file()
 
     def parse_docs(self):
@@ -399,10 +401,8 @@ class IRData(XMLData):
         for doc in self.ir_docs:
             doc.word_tokenize();
             for word in doc.words:
-                print word.lower()
                 if word.lower() in self.stopwords:
                     doc.words.remove(word)
-      
 
 class JokerData(IRData):
     def __init__(self, filename):
@@ -411,11 +411,15 @@ class JokerData(IRData):
          
     def parse_docs(self):
         tjokes = []
+        tmd5s  = []
 
         for joke in self.xml.getElementsByTagName('joke'):
             ntxt = TXTData("no.fn")
             ntxt.set_text(joke.toxml().replace('<joke>','').replace('</joke',''))
             tjokes.append(ntxt)
+            tmd5s.append( int(hashlib.md5(ntxt.document.text).hexdigest(), 16) )
+            
+        self.ir_md5s = tmd5s
         self.ir_docs = tjokes
         self.remove_stop_words() 
 
