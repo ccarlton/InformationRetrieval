@@ -60,12 +60,6 @@ class IRDatabase(Database):
             row = self.cursor.fetchone()
             print row
 
-       # row = self.cursor.fetchone()
-       # print int(row[0])  
-       # if int(row[0]) == 1:
-       #     return True 
-       # else: 
-
 class JokerDatabase(IRDatabase):
     def __init__(self):
         super(JokerDatabase, self).__init__()
@@ -110,20 +104,34 @@ class JokerDatabase(IRDatabase):
             print "Error can not persist docs, there is no active database connection"
             return
         else:
+            count = 0
             for key, value in data.docs.iteritems():
-                data_tuple = (key, value.document.text, value.words)
                 words = ""
                 for word in value.words:
                     words += word 
                     words += " "
-    
-                print "\n\n\n"
-                print key
-                print value.document.text
-                print words, "\n\n\n"
-                #self.cursor.execute("INSERT INTO documents(id, text, words)  values(%s, %s, %s)",
-                #                    data_tuple)
-   
+                
+                if self.contains_id(key) == False:
+                    count += 1
+                    sql2 = "INSERT into documents(id, text, words) VALUES('%s', '%s', '%s')" % \
+                            (str(key), value.document.text, words) 
+                    self.cursor.execute(sql2)
+
+        print "The total number of rows persisted is ", count
+
+    def contains_id(self, docid):
+        sql = "SELECT id from documents where id = %s"
+        self.cursor.execute(sql, str(docid))
+        rows = self.cursor.fetchall()
+        
+        if len(rows) == 0:
+            return False
+        else: 
+            return True
+
+    def remove_id(self, docid):
+        sql = "DELETE from documents where id = %s"
+        self.cursor.execute(sql, str(docid))
  
 class ElectionDatabase:
 

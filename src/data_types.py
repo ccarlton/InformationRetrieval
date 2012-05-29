@@ -420,11 +420,12 @@ class JokerData(IRData):
     def parse_docs(self):
         for joke in self.xml.getElementsByTagName('joke'):
             ntxt = TXTData("no.fn")
-            ntxt.set_text(joke.toxml().replace('<joke>','').replace('</joke',''))
+            txt = joke.toxml().replace('<joke>', '').replace('</joke','').replace('\'', '')
+            ntxt.set_text(txt)
             
             self.remove_stop_words(ntxt)
             md5 = int(hashlib.md5(ntxt.document.text).hexdigest(), 16)
-            self.docs[md5] = ntxt
+            self.docs[str(md5)] = ntxt
 
 class Document:
     def __init__(self, text):

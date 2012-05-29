@@ -24,14 +24,16 @@ class InfoRetrieval:
             value.words = stemmed_words
 
     def do_clear(self):
-        return None
+        for dfile in self.data:
+            for key in dfile.docs.iterkeys():
+                self.db.remove_id(key)
 
     def do_print(self, docid):
         found = False
         for dfile in self.data:
-            if dfile.docs.has_key(int(docid)):
+            if dfile.docs.has_key(str(docid)):
                 found = True
-                print dfile.docs[int(docid)].document.text
+                print dfile.docs[str(docid)].document.text
 
         if found == False:
             print "Document not found."
@@ -40,9 +42,9 @@ class InfoRetrieval:
         data = JokerData(filename) 
         data.parse_docs()
 
+        self.stem_words(data)
         self.db.persist_docs(data)
  
-        self.stem_words(data)
         self.data.append(data)
 
     def do_list(self):
