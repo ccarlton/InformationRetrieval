@@ -16,13 +16,10 @@ class InfoRetrieval:
 
     def restore_persisted_state(self):
         state = self.db.restore_state()
-
         self.total_docs = len(state.docs)
-        
         self.data.append(state)
         self.calculate_idfs(state)
 
- 
     def stem_words(self, data):
         for key, value in data.docs.iteritems():
             stemmed_words = []
@@ -33,7 +30,7 @@ class InfoRetrieval:
     def calculate_query_idf(self, query):
         idf_dict = {}
         total = self.total_docs
-        print "Total docs:  ", total
+        
         for word in query.split(' '):
             doc_ct = 0
             for data2 in self.data:
@@ -42,7 +39,11 @@ class InfoRetrieval:
                         if word2 == word:
                             doc_ct += 1
                             break
-            idf_dict[word] = float(math.log((int(total)/int(doc_ct)), 2))
+            if doc_ct == 0:
+                idf_dict[word] = 0
+            else:
+                idf_dict[word] = float(math.log((int(total)/int(doc_ct)), 2))
+        
         return idf_dict
 
     def calculate_query_tf(self, query):
@@ -74,7 +75,6 @@ class InfoRetrieval:
                                 doc_ct += 1
                                 break
 
-                print "Found ", word1, " with an df of " , doc_ct, "/", total
                 value1.terms_idf[word1] = math.log10(int(total)/int(doc_ct))
 
     def do_clear(self):
@@ -88,7 +88,6 @@ class InfoRetrieval:
             if dfile.docs.has_key(str(docid)):
                 found = True
                 print dfile.docs[str(docid)].document.text
-                #print dfile.docs[str(docid)].words
 
         if found == False:
             print "Document not found."
@@ -107,7 +106,7 @@ class InfoRetrieval:
         self.total_docs = count
  
         self.calculate_idfs(data)
-          #self.db.persist_docs(data)
+        self.db.persist_docs(data)
        
 
     def do_list(self):
@@ -132,11 +131,33 @@ class InfoRetrieval:
         if found == False:
             print "Document not found."
 
-    def do_sim(self):
-        return None
+    def do_sim(self, docID1, docID2):
+        doc1 = 0
+        doc2 = 0
+        for dfile in self.data:
+            for key, value in dfile.docs.iteritems():
+                if key == docID1:
+                    doc1 = value
+                elif key == docID2: 
+                    doc2 = value
+
+        if doc1 == 0 or doc2 == 0:
+            print "Error invalid docID"
+            return    
+            
+        doc1_wgts = doc1.tf_idf()
+        doc2_wgts = doc2.tf_idf()
+        
+        sim = 0
+        for key1, value1 in doc1_wgts.iteritems():
+            for key2, value2 in doc2_wgts.iteritems():
+                if key2 == key1:
+                    sim += value1
+                    sim += value2        
+        print "Sim: ", sim
+        return sim
 
     def do_search(self, query):
-        print "DO SEARCH!!!!"
         tfs  = self.calculate_query_tf(query)
         idfs = self.calculate_query_idf(query)
         tf_idfs = {}
@@ -149,43 +170,31 @@ class InfoRetrieval:
             for key, value in dfile.docs.iteritems():
                 sims[key] = self.query_similarity(tf_idfs, value)
 
-        list_sims = [] 
-
-        max_sim = -9999
-        max_key = 0
-        for key, value in sims.iteritems():
-             list_sims.append(float(value))
-             if float(value) >= max_sim:
-                max_sim = float(value)
-                max_key = key
-        print "simslist: ", sorted(list_sims)
-
-        print "Max sim: ", max_sim 
-        print "Max key: ", max_key 
-        
-        #print "Sim: ", sim
-        #print "DOC: ", doc.words 
-            
+        sorted_sims = sorted(sims.iteritems(), key=operator.itemgetter(1), reverse=True)
+        for pair in sorted_sims:
+            if pair[1] > 0:
+                print "    ", pair[0], ":", pair[1] 
 
     def do_search_doc(self, docid):
-        return None
+        sims = {}
+        for dfile in self.data:
+            for key, value in dfile.docs.iteritems():
+                sims[key] = self.do_sim(docid, key)    
+     
+        sorted_sims = sorted(sims.iteritems(), key=operator.itemgetter(1), reverse=True)
+        print "Most relevant documents:"
+        for pair in sorted_sims:
+            if pair[1] > 0:
+                print "    ", pair[0], ":", pair[1] 
+
 
     def query_similarity(self, query_wgt, doc):
         doc_wgts = doc.tf_idf()
-        toprow = 0
-        bott1 = 0
-        bott2 = 0
-        bottom = 0 
         sim = 0
-        #print "Query_wgt: ", query_wgt
-        #print "DOC_wgt: ", doc_wgts
 
         for key, value in query_wgt.iteritems():
             if doc_wgts.has_key(key):
                 sim += doc_wgts[key]
-                #print 'doc_wgts[',key,'] = ',doc_wgts[key]
-                #print 'query_wgts[',key,'] = ',query_wgt[key]
-
         return sim
 
     def do_read_list(self, lst):
@@ -219,10 +228,16 @@ class InfoRetrieval:
                 break
             
             current_opt = choice.replace('\n', '').split(' ')
+            if not values.has_key(current_opt[0].lower()):
+                continue
+            
             func = values[current_opt[0].lower()]
 
             if current_opt[0] == 'quit':
                return 
+            elif current_opt[0] == 'search' and "\"" in choice: 
+                cs = choice.split('"')
+                func(cs[1])
             elif len(current_opt) == 3:
                 func(current_opt[1], current_opt[2])
             elif len(current_opt) == 2:
@@ -231,7 +246,7 @@ class InfoRetrieval:
                 func()
 
     def show_menu(self):
-        print "Document Collection Options:\n   -CLEAR\n   -PRINT <docID>\n   -SHOW <docID>\n   -SIM    <docID> <docID>\n   -SEARCH DOC <docID>\n   -QUIT"
+        print "Document Collection Options:\n   -CLEAR\n   -PRINT <docID>\n   -SHOW <docID>\n   -READ <filename>\n   -READ_LIST <list>\n   -SIM    <docID> <docID>\n   -SEARCH_DOC <docID>\n   -SEARCH <query>\n   -QUIT"
 
 def main():
     if len(sys.argv) != 1:

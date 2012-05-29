@@ -412,7 +412,7 @@ class IRData(XMLData):
         super(IRData, self).__init__(filename)		  
         self.stopwords = ['i', 'you', 'they', 'them', 'his', 'do', 'be', 'am',
                             'are', 'have', 'had', 'in', 'onto', 'and', 'or', 'of',
-                            'from', 'a', '&quot', 'quot']
+                            'from', 'a', '&quot', 'quot', 'the', 'we']
         self.docs = {}
         self.idf = []
 
