@@ -1,19 +1,27 @@
 from porter import PorterStemmer
 from data_types import JokerData
+from database import JokerDatabase
+import _mysql
 import sys
 
 class InfoRetrieval:
     def __init__(self):
         self.stemmer = PorterStemmer()
         self.data = []
-        self.show_consol()    
-    
-    def stem_words(self, index):
-        for doc in self.data[index].ir_docs:
+        self.db = JokerDatabase()
+        self.db.connect()
+
+    def restore_persisted_state(self):
+        state = self.db.restore_state()
+        print 'State: ', state
+        self.data.append(state)
+ 
+    def stem_words(self, data):
+        for key, value in data.docs.iteritems():
             stemmed_words = []
-            for word in doc.words:
+            for word in value.words:
                 stemmed_words.append(self.stemmer.stem(word, 0, len(word)-1))
-            doc.words = stemmed_words
+            value.words = stemmed_words
 
     def do_clear(self):
         return None
@@ -21,31 +29,28 @@ class InfoRetrieval:
     def do_print(self, docid):
         found = False
         for dfile in self.data:
-            index = 0
-            for md5 in dfile.ir_md5s:
-                if long(md5) == long(docid):
-                    found = True
-                    print "Document Found:"
-                    print dfile.ir_docs[index].document.text  
-                index += 1
+            if dfile.docs.has_key(int(docid)):
+                found = True
+                print dfile.docs[int(docid)].document.text
 
         if found == False:
             print "Document not found."
 
     def do_read(self, filename):
         data = JokerData(filename) 
-        self.data.append(data)
+        data.parse_docs()
 
-        index = len(self.data)
-        self.stem_words(index-1)
+        self.db.persist_docs(data)
+ 
+        self.stem_words(data)
+        self.data.append(data)
 
     def do_list(self):
         index = 0
         for dfile in self.data:
             print index, ":", dfile.filename
-            for hval in self.data[index].ir_md5s:
-                print "    ",  hval
-            index += 1
+            for key in dfile.docs.iterkeys():
+                print "    ", key 
 
     def do_show(self):
         return None
@@ -89,7 +94,7 @@ class InfoRetrieval:
             func = values[current_opt[0].lower()]
 
             if current_opt[0] == 'quit':
-                break
+               return 
             elif len(current_opt) == 3:
                 func(current_opt[1], current_opt[2])
             elif len(current_opt) == 2:
@@ -106,6 +111,7 @@ def main():
         return    
   
     infosys = InfoRetrieval()
+    infosys.restore_persisted_state()
     infosys.show_consol()    
 
 if __name__ == '__main__':

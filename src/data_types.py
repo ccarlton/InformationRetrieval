@@ -275,6 +275,9 @@ class TXTData(Data):
     def set_text(self, text):
         self.document = Document(text)
 
+    def set_words(self, words):
+        self.words = words
+
     def paragraph_tokenize(self):
         if len(self.paragraphs) == 0:
             self.paragraphs = self.document.text.split("\n\n")
@@ -374,7 +377,10 @@ class XMLData(Data):
     def __init__(self, filename):
         super(XMLData, self).__init__(filename)
         self.document = []
-        self.read_file()
+        
+        if filename != "no.fn":
+            self.read_file()
+            self.parse_file()
     
     def read_file(self):
         file_in = open(self.filename, 'r')
@@ -390,38 +396,35 @@ class IRData(XMLData):
         self.stopwords = ['i', 'you', 'they', 'them', 'his', 'do', 'be', 'am',
                             'are', 'have', 'had', 'in', 'onto', 'and', 'or', 'of',
                             'from', 'a', '&quot']
-        self.ir_docs = []
-        self.ir_md5 = []
-        self.parse_file()
+        self.docs = {}
+        if filename != "no.fn":
+            self.parse_file()
 
     def parse_docs(self):
         return None
 
-    def remove_stop_words(self):
-        for doc in self.ir_docs:
-            doc.word_tokenize();
-            for word in doc.words:
-                if word.lower() in self.stopwords:
-                    doc.words.remove(word)
+    def remove_stop_words(self, doc):
+        doc.word_tokenize();
+        for word in doc.words:
+            if word.lower() in self.stopwords:
+                doc.words.remove(word)
 
 class JokerData(IRData):
     def __init__(self, filename):
         super(JokerData, self).__init__(filename)		  
-        self.parse_docs()
+        #self.parse_docs()
          
-    def parse_docs(self):
-        tjokes = []
-        tmd5s  = []
+    def set_docs(self, docs):
+        self.docs = docs
 
+    def parse_docs(self):
         for joke in self.xml.getElementsByTagName('joke'):
             ntxt = TXTData("no.fn")
             ntxt.set_text(joke.toxml().replace('<joke>','').replace('</joke',''))
-            tjokes.append(ntxt)
-            tmd5s.append( int(hashlib.md5(ntxt.document.text).hexdigest(), 16) )
             
-        self.ir_md5s = tmd5s
-        self.ir_docs = tjokes
-        self.remove_stop_words() 
+            self.remove_stop_words(ntxt)
+            md5 = int(hashlib.md5(ntxt.document.text).hexdigest(), 16)
+            self.docs[md5] = ntxt
 
 class Document:
     def __init__(self, text):
