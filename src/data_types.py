@@ -267,6 +267,18 @@ class TXTData(Data):
         self.words = []
         self.paragraphs = []
         self.sentences = []
+        self.terms_freq = {} 
+        self.terms_idf = {} 
+        self.tf_idfs = {}
+
+    def tf_idf(self):
+        if len(self.terms_freq) == 0 or len(self.terms_idf) == 0:   
+            print "Error tf or idfs not set"
+            return None
+        else:
+            for key, value in self.terms_freq.iteritems():
+                self.tf_idfs[key] = value * self.terms_idf[key]
+            return self.tf_idfs 
 
     def read_document(self):
         file_in = open(self.filename, 'r')
@@ -317,7 +329,12 @@ class TXTData(Data):
             if freq_dict.has_key(x):
                 freq_dict[x] += 1
             else:
-                freq_dict[x] = 1 
+                freq_dict[x] = 1
+
+        for key, value in freq_dict.iteritems():
+            freq_dict[key] = float(value) / float(len(self.words))
+ 
+        self.terms_freq = freq_dict
         return freq_dict
 
     def print_count_statistics(self):
@@ -395,8 +412,10 @@ class IRData(XMLData):
         super(IRData, self).__init__(filename)		  
         self.stopwords = ['i', 'you', 'they', 'them', 'his', 'do', 'be', 'am',
                             'are', 'have', 'had', 'in', 'onto', 'and', 'or', 'of',
-                            'from', 'a', '&quot']
+                            'from', 'a', '&quot', 'quot']
         self.docs = {}
+        self.idf = []
+
         if filename != "no.fn":
             self.parse_file()
 
@@ -424,6 +443,8 @@ class JokerData(IRData):
             ntxt.set_text(txt)
             
             self.remove_stop_words(ntxt)
+            ntxt.unique_word_frequency();
+            
             md5 = int(hashlib.md5(ntxt.document.text).hexdigest(), 16)
             self.docs[str(md5)] = ntxt
 
